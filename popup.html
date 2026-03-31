@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { width: 320px; padding: 15px; font-family: Arial, sans-serif; }
+        h2 { font-size: 18px; margin-top: 0; text-align: center; }
+        .status { margin: 12px 0; padding: 8px; background: #f0f0f0; border-radius: 4px; text-align: center; font-weight: bold; }
+        .task-list { max-height: 250px; overflow-y: auto; font-size: 13px; }
+        .task-item { border-left: 3px solid #4CAF50; padding: 6px 8px; margin: 6px 0; background: #f9f9f9; }
+        .task-time { color: #666; font-size: 11px; }
+        hr { margin: 12px 0; }
+        .footer { font-size: 11px; text-align: center; color: #888; margin-top: 10px; }
+    </style>
+</head>
+<body>
+<h2>🔒 Focus Blocker</h2>
+<div class="status" id="statusMsg">Loading tasks...</div>
+<div id="tasksContainer">
+    <strong>Today's Tasks:</strong>
+    <div id="taskList" class="task-list">Fetching...</div>
+</div>
+<hr>
+<div class="footer">
+    Blocks distractions during active tasks<br>
+    ✅ Hardcoded ID: <span id="hardcodedId">123</span>
+</div>
+</body>
+<script src="popup.js"></script>
+</html>
