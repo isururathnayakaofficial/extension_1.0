@@ -1,23 +1,30 @@
 {
   "manifest_version": 3,
-  "name": "Focus Blocker - Work Schedule",
+  "name": "Task Focus Blocker",
   "version": "1.0",
-  "description": "Blocks social media during scheduled work tasks from your backend.",
+  "description": "Blocks distracting websites during your scheduled tasks.",
   "permissions": [
     "storage",
     "alarms",
-    "declarativeNetRequest"
+    "tabs",
+    "declarativeNetRequest",
+    "scripting"
   ],
   "host_permissions": [
     "http://localhost:8081/*",
+    "http://localhost:3000/*",
+    "http://localhost:5173/*",
     "*://*.facebook.com/*",
-    "*://*.twitter.com/*",
-    "*://*.instagram.com/*",
+    "*://youtube.com/*",
     "*://*.youtube.com/*",
-    "*://*.tiktok.com/*",
-    "*://*.reddit.com/*",
-    "*://*.netflix.com/*",
-    "*://*.twitch.tv/*"
+    "*://youtu.be/*",
+    "*://*.youtu.be/*",
+    "*://youtube-nocookie.com/*",
+    "*://*.youtube-nocookie.com/*",
+    "*://*.twitter.com/*",
+    "*://*.x.com/*",
+    "*://*.instagram.com/*",
+    "*://*.tiktok.com/*"
   ],
   "background": {
     "service_worker": "background.js"
@@ -25,6 +32,12 @@
   "action": {
     "default_popup": "popup.html"
   },
+  "content_scripts": [
+    {
+      "matches": ["http://localhost:3000/*", "http://localhost:5173/*"],
+      "js": ["content.js"]
+    }
+  ],
   "web_accessible_resources": [
     {
       "resources": ["blocked.html"],
