@@ -6,9 +6,15 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-<h2>Focus Mode</h2>
-<p id="status">Loading...</p>
-<button id="refreshBtn" type="button">Refresh now</button>
+<main class="popup-shell">
+    <div class="eyebrow">Task Focus Blocker</div>
+    <h1>Focus Mode</h1>
+    <p id="status" class="status">Loading status...</p>
+    <div class="actions">
+        <button id="refreshBtn" type="button">Refresh now</button>
+        <button id="stopFocusBtn" class="text-action" type="button">Stop blocker</button>
+    </div>
+</main>
 <script src="popup.js"></script>
 </body>
 </html>

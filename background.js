@@ -6,16 +6,22 @@ const BLOCKED_SITES = [
     "twitter.com",
     "x.com",
     "instagram.com",
-    "tiktok.com"
+    "tiktok.com",
+    "reddit.com",
+    "linkedin.com",
+    "pinterest.com",
+    "snapchat.com",
+    "threads.net",
+    "discord.com",
+    "messenger.com"
 ];
 const API_BASE_URL = "http://localhost:8081";
 const CHECK_ALARM_NAME = "focus-check";
 const BLOCKED_PAGE_URL = chrome.runtime.getURL("blocked.html");
 const BLOCK_RULE_START_ID = 7000;
-const FAST_REFRESH_MS = 3000;
 const CHECK_DEBOUNCE_MS = 2000;
+const MANUAL_FOCUS_OFF_KEY = "manualFocusOff";
 let isBlockingEnabled = false;
-let fastRefreshTimer = null;
 let isCheckRunning = false;
 let lastCheckAtMs = 0;
 
@@ -41,6 +47,23 @@ function setToStorage(values) {
     return new Promise((resolve) => {
         chrome.storage.local.set(values, () => resolve());
     });
+}
+
+async function ensureOffscreenDocument() {
+    if (!chrome.offscreen || !chrome.offscreen.createDocument) return;
+
+    try {
+        await chrome.offscreen.createDocument({
+            url: chrome.runtime.getURL("offscreen.html"),
+            reasons: ["DOM_PARSER"],
+            justification: "Keep periodic refresh checks running while the service worker sleeps."
+        });
+    } catch (err) {
+        const message = String(err?.message || err || "");
+        if (!message.includes("already exists")) {
+            console.warn("ensureOffscreenDocument failed", err);
+        }
+    }
 }
 
 // Resolve registerId similarly to TodoView: prefer cached id, then userData/registerEmail + /auth/getAll.
@@ -244,12 +267,43 @@ async function enforceBlockingOnOpenTabs(shouldBlock) {
     }
 }
 
+async function unblockBlockedPageTabs() {
+    const tabs = await chrome.tabs.query({});
+    for (const tab of tabs) {
+        if (!tab.id || !tab.url || !tab.url.startsWith(BLOCKED_PAGE_URL)) continue;
+        try {
+            const parsed = new URL(tab.url);
+            const site = parsed.searchParams.get("site");
+            if (site) {
+                chrome.tabs.update(tab.id, { url: `https://${site}` });
+            }
+        } catch {
+            // Ignore malformed tab URLs.
+        }
+    }
+}
+
 // Periodically check tasks and block sites
 async function checkAndBlock(force = false) {
     if (isCheckRunning) return;
     if (!force && Date.now() - lastCheckAtMs < CHECK_DEBOUNCE_MS) return;
 
     isCheckRunning = true;
+    const { [MANUAL_FOCUS_OFF_KEY]: manualFocusOff } = await getFromStorage([MANUAL_FOCUS_OFF_KEY]);
+
+    if (manualFocusOff === true) {
+        const wasBlocking = isBlockingEnabled;
+        isBlockingEnabled = false;
+        if (force || wasBlocking) {
+            await updateBlockingRules(false);
+            await unblockBlockedPageTabs();
+        }
+        await setToStorage({ focusModeActive: false, lastCheckAt: new Date().toISOString() });
+        lastCheckAtMs = Date.now();
+        isCheckRunning = false;
+        return;
+    }
+
     const registerId = await resolveRegisterId();
     if (!registerId) {
         isBlockingEnabled = false;
@@ -286,16 +340,6 @@ function scheduleChecks() {
     chrome.alarms.create(CHECK_ALARM_NAME, { periodInMinutes: 1 });
 }
 
-function startFastRefresh() {
-    if (fastRefreshTimer) {
-        clearInterval(fastRefreshTimer);
-    }
-    // Frequent checks allow near-immediate unblock after task completion/deletion.
-    fastRefreshTimer = setInterval(() => {
-        checkAndBlock();
-    }, FAST_REFRESH_MS);
-}
-
 chrome.alarms.onAlarm.addListener((alarm) => {
     if (alarm.name === CHECK_ALARM_NAME) {
         checkAndBlock();
@@ -304,22 +348,40 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 
 chrome.runtime.onInstalled.addListener(() => {
     scheduleChecks();
-    startFastRefresh();
+    ensureOffscreenDocument();
     checkAndBlock(true);
 });
 
 chrome.runtime.onStartup.addListener(() => {
     scheduleChecks();
-    startFastRefresh();
+    ensureOffscreenDocument();
     checkAndBlock(true);
 });
 
-chrome.runtime.onMessage.addListener((message) => {
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     if (message?.type === "REGISTER_CONTEXT_UPDATED") {
-        checkAndBlock(true);
+        checkAndBlock(true).then(() => sendResponse({ ok: true })).catch((error) => sendResponse({ ok: false, error: String(error) }));
+        return true;
     }
     if (message?.type === "CHECK_BLOCKING_NOW") {
-        checkAndBlock(true);
+        ensureOffscreenDocument().then(() => checkAndBlock(true)).then(() => sendResponse({ ok: true })).catch((error) => sendResponse({ ok: false, error: String(error) }));
+        return true;
+    }
+    if (message?.type === "STOP_FOCUS_MODE") {
+        setToStorage({ [MANUAL_FOCUS_OFF_KEY]: true })
+            .then(() => ensureOffscreenDocument())
+            .then(() => checkAndBlock(true))
+            .then(() => sendResponse({ ok: true }))
+            .catch((error) => sendResponse({ ok: false, error: String(error) }));
+        return true;
+    }
+    if (message?.type === "RESUME_FOCUS_MODE") {
+        setToStorage({ [MANUAL_FOCUS_OFF_KEY]: false })
+            .then(() => ensureOffscreenDocument())
+            .then(() => checkAndBlock(true))
+            .then(() => sendResponse({ ok: true }))
+            .catch((error) => sendResponse({ ok: false, error: String(error) }));
+        return true;
     }
 });
 
@@ -339,9 +401,12 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
     if (changes.registerId || changes.registerEmail || changes.userData) {
         checkAndBlock(true);
     }
+    if (changes[MANUAL_FOCUS_OFF_KEY]) {
+        checkAndBlock(true);
+    }
 });
 
 // Also run once when service worker wakes up.
 scheduleChecks();
-startFastRefresh();
+ensureOffscreenDocument();
 checkAndBlock(true);

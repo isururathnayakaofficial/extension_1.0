@@ -8,12 +8,14 @@
     "alarms",
     "tabs",
     "declarativeNetRequest",
-    "scripting"
+    "scripting",
+    "offscreen"
   ],
   "host_permissions": [
     "http://localhost:8081/*",
     "http://localhost:3000/*",
     "http://localhost:5173/*",
+    "*://facebook.com/*",
     "*://*.facebook.com/*",
     "*://youtube.com/*",
     "*://*.youtube.com/*",
@@ -21,10 +23,28 @@
     "*://*.youtu.be/*",
     "*://youtube-nocookie.com/*",
     "*://*.youtube-nocookie.com/*",
+    "*://twitter.com/*",
     "*://*.twitter.com/*",
+    "*://x.com/*",
     "*://*.x.com/*",
+    "*://instagram.com/*",
     "*://*.instagram.com/*",
-    "*://*.tiktok.com/*"
+    "*://tiktok.com/*",
+    "*://*.tiktok.com/*",
+    "*://reddit.com/*",
+    "*://*.reddit.com/*",
+    "*://linkedin.com/*",
+    "*://*.linkedin.com/*",
+    "*://pinterest.com/*",
+    "*://*.pinterest.com/*",
+    "*://snapchat.com/*",
+    "*://*.snapchat.com/*",
+    "*://threads.net/*",
+    "*://*.threads.net/*",
+    "*://discord.com/*",
+    "*://*.discord.com/*",
+    "*://messenger.com/*",
+    "*://*.messenger.com/*"
   ],
   "background": {
     "service_worker": "background.js"
